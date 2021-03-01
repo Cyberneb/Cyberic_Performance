@@ -1,0 +1,10 @@
+<?php /** @var $block Cyberic\Performance\Block\RetrieveDependency */ ?>
+<script type="text/javascript">
+    require(['Cyberic_Performance/js/retrieve-dependency'], function (retrieveDeps) {
+        retrieveDeps.init(
+            <?= "'" . $block->getRouteName() . "'" ?>,
+            <?= "'" . $block->getRequestUrl() . "'" ?>
+        );
+        retrieveDeps.run();
+    });
+</script>

@@ -1,0 +1,14 @@
+{
+    "cyberic_js_bundle": {
+        "column": {
+            "js_bundle_id": true,
+            "page_type": true,
+            "dependency_name": true,
+            "dependency_path": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "CYBERIC_JS_BUNDLE_PAGE_TYPE_DEPENDENCY_NAME": true
+        }
+    }
+}
