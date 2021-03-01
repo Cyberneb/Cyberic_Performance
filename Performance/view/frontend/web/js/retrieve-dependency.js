@@ -1,3 +1,7 @@
+/**
+ * @author Eric Allatt <eric@cyberic.net>
+ * @link https://www.cyberic.net
+ */
 define([], function () {
     return {
         /**

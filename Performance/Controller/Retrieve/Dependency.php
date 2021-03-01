@@ -3,6 +3,10 @@
  * @noinspection PhpDeprecationInspection
  * @noinspection PhpUndefinedClassInspection
  */
+/**
+ * @author Eric Allatt <eric@cyberic.net>
+ * @link https://www.cyberic.net
+ */
 
 namespace Cyberic\Performance\Controller\Retrieve;
 

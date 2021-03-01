@@ -1,4 +1,8 @@
 <?php
+/**
+ * @author Eric Allatt <eric@cyberic.net>
+ * @link https://www.cyberic.net
+ */
 
 namespace Cyberic\Performance\Package\Bundle;
 

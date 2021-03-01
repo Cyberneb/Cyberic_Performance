@@ -3,6 +3,10 @@
  * @noinspection PhpUnusedParameterInspection
  * @noinspection PhpUnused
  */
+/**
+ * @author Eric Allatt <eric@cyberic.net>
+ * @link https://www.cyberic.net
+ */
 
 namespace Cyberic\Performance\Plugin\Model;
 
