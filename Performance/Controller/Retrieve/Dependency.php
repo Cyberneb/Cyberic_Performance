@@ -13,6 +13,7 @@ namespace Cyberic\Performance\Controller\Retrieve;
 use Cyberic\Performance\Model\JsBundleFactory;
 use Cyberic\Performance\Model\ResourceModel\JsBundle as JsBundleResourceModel;
 use Exception;
+use Magento\Framework\Escaper;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\Request\Http;
@@ -20,7 +21,9 @@ use Magento\Framework\App\Request\InvalidRequestException;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Framework\Controller\Result\Raw;
 use Magento\Framework\App\CsrfAwareActionInterface;
+use Magento\Framework\Controller\Result\RawFactory;
 use Magento\Framework\Serialize\SerializerInterface;
 
 class Dependency extends Action implements CsrfAwareActionInterface
@@ -47,7 +50,19 @@ class Dependency extends Action implements CsrfAwareActionInterface
     protected $_request;
 
     /**
+     * @var RawFactory
+     */
+    protected $resultRawFactory;
+
+    /**
+     * @var Escaper
+     */
+    private Escaper $escaper;
+
+    /**
      * @param Context $context
+     * @param RawFactory $resultRawFactory
+     * @param Escaper $escaper
      * @param SerializerInterface $jsonSerializer
      * @param JsonFactory $jsonFactory
      * @param JsBundleFactory $jsBundleFactory
@@ -55,12 +70,16 @@ class Dependency extends Action implements CsrfAwareActionInterface
      */
     public function __construct(
         Context $context,
+        RawFactory $resultRawFactory,
+        Escaper $escaper,
         SerializerInterface $jsonSerializer,
         JsonFactory $jsonFactory,
         JsBundleFactory $jsBundleFactory,
         JsBundleResourceModel $jsBundleResourceModel
     ) {
         parent::__construct($context);
+        $this->resultRawFactory = $resultRawFactory;
+        $this->escaper = $escaper;
         $this->jsonSerializer = $jsonSerializer;
         $this->jsonFactory = $jsonFactory;
         $this->jsBundleFactory = $jsBundleFactory;
@@ -68,17 +87,32 @@ class Dependency extends Action implements CsrfAwareActionInterface
     }
 
     /**
-     * Receive the RequireJs dependency to save in the DB.
+     * Receive the RequireJs dependency to save in the DB. We need to think about security here:
+     * 1. Prevent the Ajax controller from being accessed directly from the browser
+     * 2. Prevent javascript module with full URL paths
+     * 3. Sanitize the JSON data
+     * You may want to add even more security checks.
      *
-     * @return Json
+     * @return Json|Raw
      * @noinspection PhpUndefinedMethodInspection
+     * @noinspection PhpUnusedLocalVariableInspection
      */
-    public function execute(): Json
+    public function execute()
     {
+        /**
+         * Prevent the Ajax controller from being accessed directly from the browser.
+         */
+        if ($this->getRequest()->getMethod() !== 'POST' || !$this->getRequest()->isXmlHttpRequest()) {
+            $resultRaw = $this->resultRawFactory->create();
+            return $resultRaw->setHttpResponseCode(400);
+        }
         $data = $this->jsonSerializer->unserialize($this->_request->getContent());
         if (isset($data['deps'])) {
             foreach ($data['deps'] as $dependencyPath) {
-                if (strpos($dependencyPath, 'js/bundle/') !== false) {
+                /**
+                 * Prevent javascript module with full URL paths
+                 */
+                if (strpos($dependencyPath, 'js/bundle/') !== false || filter_var($data['deps'], FILTER_VALIDATE_URL)) {
                     continue;
                 }
                 $dependencyPath = $this->setDependencyPath($dependencyPath);
@@ -88,8 +122,11 @@ class Dependency extends Action implements CsrfAwareActionInterface
                 }
                 $jsBundle = $this->jsBundleFactory->create();
                 $jsBundle->setData('page_type', $data['route']);
-                $jsBundle->setData('dependency_name', $dependencyName);
-                $jsBundle->setData('dependency_path', $dependencyPath);
+                /**
+                 * Sanitize the JSON data
+                 */
+                $jsBundle->setData('dependency_name', $this->escaper->escapeJs($dependencyName));
+                $jsBundle->setData('dependency_path', $this->escaper->escapeJs($dependencyPath));
                 try {
                     $this->jsBundleResourceModel->save($jsBundle);
                 } catch (Exception $exception) {
@@ -112,7 +149,7 @@ class Dependency extends Action implements CsrfAwareActionInterface
         $search = ['.min.js','jquery/jquery.storageapi','ui/template'];
         $replace = ['.js','jquery/jquery.storageapi.min','Magento_Ui/templates'];
 
-        return str_replace ($search, $replace, $dependencyPath);
+        return str_replace($search, $replace, $dependencyPath);
     }
 
     /**
