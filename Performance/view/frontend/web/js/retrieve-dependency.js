@@ -38,7 +38,7 @@ define([], function () {
             };
             const xhr = new XMLHttpRequest();
             xhr.open('POST', this.url);
-            xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest"); 
+            xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
             xhr.setRequestHeader('Content-type', 'application/json;charset=utf-8');
             xhr.send(JSON.stringify(data));
         },

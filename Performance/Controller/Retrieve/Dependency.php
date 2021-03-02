@@ -25,6 +25,7 @@ use Magento\Framework\Controller\Result\Raw;
 use Magento\Framework\App\CsrfAwareActionInterface;
 use Magento\Framework\Controller\Result\RawFactory;
 use Magento\Framework\Serialize\SerializerInterface;
+use Magento\Framework\Url;
 
 class Dependency extends Action implements CsrfAwareActionInterface
 {
@@ -60,6 +61,11 @@ class Dependency extends Action implements CsrfAwareActionInterface
     private Escaper $escaper;
 
     /**
+     * @var Url
+     */
+    private Url $url;
+
+    /**
      * @param Context $context
      * @param RawFactory $resultRawFactory
      * @param Escaper $escaper
@@ -67,6 +73,7 @@ class Dependency extends Action implements CsrfAwareActionInterface
      * @param JsonFactory $jsonFactory
      * @param JsBundleFactory $jsBundleFactory
      * @param JsBundleResourceModel $jsBundleResourceModel
+     * @param Url $url
      */
     public function __construct(
         Context $context,
@@ -75,7 +82,8 @@ class Dependency extends Action implements CsrfAwareActionInterface
         SerializerInterface $jsonSerializer,
         JsonFactory $jsonFactory,
         JsBundleFactory $jsBundleFactory,
-        JsBundleResourceModel $jsBundleResourceModel
+        JsBundleResourceModel $jsBundleResourceModel,
+        Url $url
     ) {
         parent::__construct($context);
         $this->resultRawFactory = $resultRawFactory;
@@ -84,11 +92,13 @@ class Dependency extends Action implements CsrfAwareActionInterface
         $this->jsonFactory = $jsonFactory;
         $this->jsBundleFactory = $jsBundleFactory;
         $this->jsBundleResourceModel = $jsBundleResourceModel;
+        $this->url = $url;
     }
 
     /**
      * Receive the RequireJs dependency to save in the DB. We need to think about security here:
      * 1. Prevent the Ajax controller from being accessed directly from the browser
+     * 2. Force same website origin
      * 2. Prevent javascript module with full URL paths
      * 3. Sanitize the JSON data
      * You may want to add even more security checks.
@@ -102,7 +112,11 @@ class Dependency extends Action implements CsrfAwareActionInterface
         /**
          * Prevent the Ajax controller from being accessed directly from the browser.
          */
-        if ($this->getRequest()->getMethod() !== 'POST' || !$this->getRequest()->isXmlHttpRequest()) {
+        if (
+            $this->getRequest()->getMethod() !== 'POST' ||
+            !$this->getRequest()->isXmlHttpRequest() ||
+            !$this->url->isOwnOriginUrl()
+        ) {
             $resultRaw = $this->resultRawFactory->create();
             return $resultRaw->setHttpResponseCode(400);
         }
