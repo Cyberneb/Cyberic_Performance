@@ -13,6 +13,7 @@ namespace Cyberic\Performance\Controller\Retrieve;
 use Cyberic\Performance\Model\JsBundleFactory;
 use Cyberic\Performance\Model\ResourceModel\JsBundle as JsBundleResourceModel;
 use Exception;
+use Magento\Framework\Controller\Result\Raw as RawResult;
 use Magento\Framework\Escaper;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
@@ -96,35 +97,19 @@ class Dependency extends Action implements CsrfAwareActionInterface
     }
 
     /**
-     * Receive the RequireJs dependency to save in the DB. We need to think about security here:
-     * 1. Prevent the Ajax controller from being accessed directly from the browser
-     * 2. Force same website origin
-     * 2. Prevent javascript module with full URL paths
-     * 3. Sanitize the JSON data
-     * You may want to add even more security checks.
+     * Receive the RequireJs dependency to save in the DB.
      *
-     * @return Json|Raw
+     * @return Json
      * @noinspection PhpUndefinedMethodInspection
      * @noinspection PhpUnusedLocalVariableInspection
      */
-    public function execute()
+    public function execute(): Json
     {
-        /**
-         * Prevent the Ajax controller from being accessed directly from the browser.
-         */
-        if (
-            $this->getRequest()->getMethod() !== 'POST' ||
-            !$this->getRequest()->isXmlHttpRequest() ||
-            !$this->url->isOwnOriginUrl()
-        ) {
-            $resultRaw = $this->resultRawFactory->create();
-            return $resultRaw->setHttpResponseCode(400);
-        }
         $data = $this->jsonSerializer->unserialize($this->_request->getContent());
         if (isset($data['deps'])) {
             foreach ($data['deps'] as $dependencyPath) {
                 /**
-                 * Prevent javascript module with full URL paths
+                 * Prevent javascript modules already bundled or with full URL paths
                  */
                 if (strpos($dependencyPath, 'js/bundle/') !== false || filter_var($data['deps'], FILTER_VALIDATE_URL)) {
                     continue;
@@ -136,11 +121,8 @@ class Dependency extends Action implements CsrfAwareActionInterface
                 }
                 $jsBundle = $this->jsBundleFactory->create();
                 $jsBundle->setData('page_type', $data['route']);
-                /**
-                 * Sanitize the JSON data
-                 */
-                $jsBundle->setData('dependency_name', $this->escaper->escapeJs($dependencyName));
-                $jsBundle->setData('dependency_path', $this->escaper->escapeJs($dependencyPath));
+                $jsBundle->setData('dependency_name', $dependencyName);
+                $jsBundle->setData('dependency_path', $dependencyPath);
                 try {
                     $this->jsBundleResourceModel->save($jsBundle);
                 } catch (Exception $exception) {
@@ -191,27 +173,30 @@ class Dependency extends Action implements CsrfAwareActionInterface
 
     /**
      * Create exception in case CSRF validation failed.
-     * Return null if default exception will suffice.
-     *
+      *
      * @param RequestInterface $request
-     *
      * @return InvalidRequestException|null
+     * @noinspection PhpUndefinedMethodInspection
      */
     public function createCsrfValidationException(RequestInterface $request): ?InvalidRequestException
     {
-        return null;
+        /** @var RawResult $response */
+        $response = $this->resultRawFactory->create();
+        $response->setHttpResponseCode(400);
+        $response->setContents('');
+
+        return new InvalidRequestException($response);
     }
 
     /**
-     * Perform custom request validation.
-     * Return null if default validation is needed.
+     * Prevent the Ajax controller from being accessed directly from the browser and force same website origin
      *
      * @param RequestInterface $request
-     *
      * @return bool|null
      */
     public function validateForCsrf(RequestInterface $request): ?bool
     {
-        return true;
+        /** @var $request Http */
+        return $request->isPost() && $request->isXmlHttpRequest() && $this->url->isOwnOriginUrl();
     }
 }
