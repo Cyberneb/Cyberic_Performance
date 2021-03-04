@@ -10,6 +10,6 @@ There is a 3 part video series explaining the business logic behind this module:
 
 https://www.youtube.com/watch?v=FxtaaZvYbGg
 
-https://www.youtube.com/watch?v=Bq2pscV8iqs
+https://www.youtube.com/watch?v=chMDmzTiEeQ
 
-https://www.youtube.com/watch?v=mySs_dVssGA
+https://www.youtube.com/watch?v=F-qzm701GNw
